@@ -1,7 +1,7 @@
 <template>
   <div id="home">
     <nav-bar class="home-nav">
-      <div slot="center">购物车</div>
+      <div slot="center">购物街</div>
     </nav-bar>
     <tab-control :titles="['流行', '新款', '精选']"
                  @tabClick="tabClick"
@@ -14,8 +14,8 @@
             :pull-up-load="true"
             @pullingUp="loadMore">
       <home-swiper :banners="banners" @swiperImageLoad="swiperImageLoad"/>
-      <recommend-view :recommends="recommends"/>
-      <feature-view/>
+      <recommend-view :recommends="recommends" @recommendsImgLoad="recommendsImgLoad"/>
+      <feature-view @FeatureViewLoad="FeatureViewLoad"/>
       <tab-control :titles="['流行', '新款', '精选']"
                    @tabClick="tabClick"
                    ref="tabControl2"/>
@@ -36,10 +36,10 @@ import TabBarItem from "@/components/common/tabbar/TabBarItem";
 import TabControl from "@/components/content/tabcontrol/TabControl";
 import GoodsList from "@/components/content/goods/GoodsList";
 import Scroll from "@/components/common/scroll/Scroll";
-import BackTop from "@/components/content/backtop/BackTop";
 
 import {getHomeMultidata, getHomeGoods} from "@/network/home";
-import {debounce} from "@/common/utils";
+
+import {itemListenerMixin, backTopMixin} from "@/common/mixin";
 
 
 export default {
@@ -52,8 +52,7 @@ export default {
     TabBarItem,
     TabControl,
     GoodsList,
-    Scroll,
-    BackTop
+    Scroll
   },
   data(){
     return {
@@ -65,21 +64,19 @@ export default {
         'sell': {page: 0, list: []}
       },
       currentType: 'pop',
-      isShowBackTop: false,
-      topOffsetTop: 0,
       isFixed: false,
+      topOffsetTop: 0,
       saveY: 0,
       titles: [],
       scrollY: [0, 0, 0],
       currentIndex: 0
-
     }
   },
+  mixins: [itemListenerMixin, backTopMixin],
   computed: {
     showGood() {
       return this.goods[this.currentType].list
-    },
-
+    }
   },
   created() {
     // 1.请求多个数据
@@ -96,23 +93,21 @@ export default {
   },
   mounted() {
     // 1.图片加载完成的事件监听
-    const refresh = debounce(this.$refs.scroll.refresh, 50)
-    this.$bus.$on('itemImgLoad', () => {
-      refresh()
-    })
+
   },
   destroyed() {
-    console.log('destroyed');
+    // console.log('destroyed');
   },
   activated() {
-
     this.$refs.scroll.scrollTo(0, this.saveY, 0)
     this.$refs.scroll.refresh()
   },
   deactivated() {
+    // 1.保存Y值
     this.saveY = this.$refs.scroll.getScrollY()
 
-    // console.log(this.saveY);
+    // 2.取消全局时间监听
+    this.$bus.$off('itemImgLoad',  this.itemImgListener)
   },
   methods: {
 
@@ -146,20 +141,26 @@ export default {
        this.$refs.tabControl2.currentIndex = index
 
      },
-    backClick() {
-      this.$refs.scroll.scrollTo(0, 0)
-    },
+
     contentScroll(position) {
       // 1.判断BacKTop是否显示
-      this.isShowBackTop = (-position.y) > 1000
+      this.listenerShowBackTop(position)
 
       // 2.决定TabControl是否吸顶（position: fixed）
       this.isFixed = (-position.y) > this.topOffsetTop
+
     },
+
     loadMore() {
       this.getHomeGoods(this.currentType)
     },
     swiperImageLoad() {
+      this.topOffsetTop = this.$refs.tabControl2.$el.offsetTop
+    },
+    FeatureViewLoad() {
+      this.topOffsetTop = this.$refs.tabControl2.$el.offsetTop
+    },
+    recommendsImgLoad() {
       this.topOffsetTop = this.$refs.tabControl2.$el.offsetTop
     },
 
@@ -172,7 +173,7 @@ export default {
         // this.result = res
         this.banners = res.data.banner.list;
         this.recommends = res.data.recommend.list
-        console.log(this.recommends);
+        // console.log(this.recommends);
       })
     },
     getHomeGoods(type) {
