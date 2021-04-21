@@ -4,7 +4,7 @@ import {
 } from "@/store/mutations-types";
 
 export default {
-  addCar(context, payload) {
+  addCart(context, payload) {
     // payload新添加商品
     // let oldProduct = null
     // for (let item of state.carList){
@@ -13,16 +13,20 @@ export default {
     //   }
     // }
 
-    //查找之前的数组中是否有该商品
-    let oldProduct = context.state.cartList.find(item => item.iid === payload.iid)
+    return new Promise((resolve, reject) => {
+      //查找之前的数组中是否有该商品
+      let oldProduct = context.state.cartList.find(item => item.iid === payload.iid)
 
-    // 判断oldProduct
-    if(oldProduct){
-      context.commit(ADD_COUNTER, oldProduct)
-    } else {
-      payload.count = 1
-      context.commit(ADD_TO_CART, payload)
-    }
+      // 判断oldProduct
+      if(oldProduct){ // 数量加一
+        context.commit(ADD_COUNTER, oldProduct)
+        resolve('当前商品数量+1')
+      } else { //添加新商品
+        payload.count = 1
+        context.commit(ADD_TO_CART, payload)
+        resolve('添加了新商品')
+      }
+    })
   }
 
 }
